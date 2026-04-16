@@ -3,6 +3,7 @@ from werkzeug.security import generate_password_hash
 import json
 import os
 from pathlib import Path
+from app import app
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -140,6 +141,6 @@ def index():
         return redirect('/dashboard')
     return redirect('/login')
 
+
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    app.run(debug=True, port=5000, host='0.0.0.0')
