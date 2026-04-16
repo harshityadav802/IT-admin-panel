@@ -1,6 +1,9 @@
-"""Main AI Agent using OpenAI LLM"""
 import os
-from openai import OpenAI
+from dotenv import load_dotenv
+import sys
+load_dotenv()
+
+from groq import Groq
 from agent.prompts import TASK_ANALYSIS_PROMPT
 from agent.tools import ScreenCapture
 from agent.state import AgentState
@@ -10,15 +13,23 @@ import base64
 
 class ITAdminAgent:
     def __init__(self):
-        api_key = os.getenv('OPENAI_API_KEY')
+        api_key = os.getenv('GROQ_API_KEY')
         if not api_key:
-            raise ValueError("OPENAI_API_KEY not set in .env")
+            print("\n❌ ERROR: GROQ_API_KEY not found!")
+            print("📝 Please create a .env file in your project root with:")
+            print("   GROQ_API_KEY=gsk_your_key_here")
+            print("\n📌 Get your key from: https://console.groq.com/keys")
+            print(f"\n📁 Current directory: {os.getcwd()}")
+            print(f"📁 .env should be at: {os.path.join(os.getcwd(), '.env')}")
+            print(f"📁 .env exists: {os.path.exists('.env')}\n")
+            sys.exit(1)
         
-        self.client = OpenAI(api_key=api_key)
-        self.model = "gpt-4o-mini"  # Cheaper than gpt-4o
+        self.client = Groq(api_key=api_key)
+        self.model = "llama-3.3-70b-versatile"
         self.screen = ScreenCapture()
         self.max_retries = 15
         self.state = None
+        print(f"✅ Groq client initialized with model: {self.model}\n")
     
     def execute_task(self, task: str) -> dict:
         print(f"\n{'='*60}")
@@ -107,18 +118,18 @@ class ITAdminAgent:
     
     def _analyze_task(self, task: str) -> str:
         try:
-            response = self.client.messages.create(
+            # FIX: Use chat.completions.create() not messages.create()
+            response = self.client.chat.completions.create(
                 model=self.model,
                 max_tokens=300,
                 messages=[{"role": "user", "content": TASK_ANALYSIS_PROMPT.format(task=task)}]
             )
-            return response.content[0].text
+            return response.choices[0].message.content
         except Exception as e:
+            print(f"Analysis error: {e}")
             return "Unable to analyze task"
     
     def _get_next_action(self, task: str, page_text: str) -> dict:
-        screenshot = self.state.screenshots[-1] if self.state.screenshots else None
-        
         prompt = f"""You are controlling an IT admin panel through a browser.
 
 TASK: {task}
@@ -129,51 +140,29 @@ RECENT ACTIONS:
 CURRENT PAGE TEXT:
 {page_text[:1500]}
 
-Look at the screenshot and decide your NEXT ACTION.
+Decide your NEXT ACTION based on the task and page content.
 
 Respond with ONLY ONE of these formats:
 
 1. TASK_COMPLETE: [summary]
 2. TASK_FAILED: [reason]
-3. click:[name]:[x,y]
+3. click:[x,y]
 4. type:[text]
 5. scroll:[up/down]
 6. wait:[seconds]
 
 EXAMPLES:
-- click:Reset Password:1100,250
+- click:1100,250
 - type:alice@company.com
 - scroll:down
 - wait:2
 """
         
         try:
-            messages = [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt
-                        }
-                    ]
-                }
-            ]
-            
-            # Add screenshot if available
-            if screenshot:
-                messages[0]["content"].append({
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/png;base64,{screenshot}",
-                        "detail": "low"  # Use low detail to save tokens
-                    }
-                })
-            
-            response = self.client.messages.create(
+            response = self.client.chat.completions.create(
                 model=self.model,
                 max_tokens=200,
-                messages=messages
+                messages=[{"role": "user", "content": prompt}]
             )
             
             text = response.choices[0].message.content.strip()
@@ -218,3 +207,24 @@ EXAMPLES:
             return {"action": "wait", "seconds": seconds}
         
         return {"action": "wait", "seconds": 1}
+
+if __name__ == "__main__":
+    print("\n" + "="*60)
+    print("🚀 IT ADMIN AGENT - Starting")
+    print("="*60)
+    
+    try:
+        agent = ITAdminAgent()
+        
+        print("\n📝 Running demo task...\n")
+        
+        result = agent.execute_task("Create a new user named John Doe with email john@company.com")
+        print(f"\n✅ Task Status: {result['status']}")
+        print(f"📊 Actions performed: {len(result['actions'])}")
+        
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Agent interrupted by user")
+    except Exception as e:
+        print(f"❌ Fatal Error: {e}")
+        import traceback
+        traceback.print_exc()
