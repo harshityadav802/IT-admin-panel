@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - IT Admin Panel</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h1>IT Admin Panel</h1>
+        <div class="nav-menu">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/users">Users</a>
+            <a href="/licenses">Licenses</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h2>Welcome to IT Admin Dashboard</h2>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Total Users</h3>
+                <p>{{ users|length }}</p>
+                <a href="/users">View Users</a>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Active Licenses</h3>
+                <p>{{ licenses|length }}</p>
+                <a href="/licenses">View Licenses</a>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Quick Actions</h3>
+                <a href="/create-user">Create User</a>
+                <a href="/assign-license">Assign License</a>
+            </div>
+        </div>
+        
+        <h3>Recent Users</h3>
+        {% if users %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Full Name</th>
+                    <th>Department</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users[:5] %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>{{ user.full_name }}</td>
+                    <td>{{ user.department }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: white; text-align: center; padding: 20px;">No users yet. <a href="/create-user" style="color: #667eea; text-decoration: underline;">Create one</a></p>
+        {% endif %}
+    </div>
+</body>
+</html>

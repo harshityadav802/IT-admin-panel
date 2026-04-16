@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Licenses - IT Admin Panel</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h1>IT Admin Panel</h1>
+        <div class="nav-menu">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/users">Users</a>
+            <a href="/licenses">Licenses</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="header-row">
+            <h2>License Management</h2>
+            <a href="/assign-license" class="btn-primary">Assign License</a>
+        </div>
+        
+        {% if licenses %}
+        <table>
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>License Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for license in licenses %}
+                <tr>
+                    <td>{{ users[license.user_id - 1].full_name if license.user_id <= users|length else 'N/A' }}</td>
+                    <td>{{ users[license.user_id - 1].email if license.user_id <= users|length else 'N/A' }}</td>
+                    <td>{{ license.license_type }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: white; text-align: center; padding: 40px;">No licenses assigned yet. <a href="/assign-license" style="color: #667eea; text-decoration: underline;">Assign one</a></p>
+        {% endif %}
+    </div>
+</body>
+</html>

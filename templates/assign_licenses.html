@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Assign License - IT Admin Panel</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h1>IT Admin Panel</h1>
+        <div class="nav-menu">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/users">Users</a>
+            <a href="/licenses">Licenses</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h2>Assign License to User</h2>
+        
+        <form method="POST" class="form-container">
+            {% if error %}
+                <div class="error">{{ error }}</div>
+            {% endif %}
+            
+            <div class="form-group">
+                <label for="user_id">Select User</label>
+                <select id="user_id" name="user_id" required>
+                    <option value="">Choose a user</option>
+                    {% for user in users %}
+                    <option value="{{ user.id }}">{{ user.full_name }} ({{ user.email }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="license_type">License Type</label>
+                <select id="license_type" name="license_type" required>
+                    <option value="">Choose a license</option>
+                    <option value="Office 365">Office 365</option>
+                    <option value="Microsoft Teams">Microsoft Teams</option>
+                    <option value="Slack Pro">Slack Pro</option>
+                    <option value="Jira">Jira</option>
+                    <option value="Notion">Notion</option>
+                    <option value="Adobe Creative Cloud">Adobe Creative Cloud</option>
+                    <option value="Zoom">Zoom</option>
+                </select>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">Assign License</button>
+                <a href="/licenses" class="btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
