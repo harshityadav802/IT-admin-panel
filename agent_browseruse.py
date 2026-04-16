@@ -5,10 +5,10 @@ from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
-from groq import Groq, AsyncGroq
+from groq import AsyncGroq
 import json
 from dataclasses import dataclass
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 load_dotenv()
 
@@ -39,9 +39,10 @@ class FailedActionsTracker:
         """Reset failure tracking"""
         self.failed_actions.clear()
 
-class LocalOllamaAgent:
+class ITAdminAgent:
+    """Groq-powered IT Admin Panel Agent"""
     
-    def __init__(self, model="openai/gpt-oss-120b"):
+    def __init__(self, model="mixtral-8x7b-32768"):
         self.model = model
         self.groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
         self.driver = None
@@ -50,10 +51,10 @@ class LocalOllamaAgent:
         self.form_data_filled = {}
         self.action_history: List[ActionResult] = []
         self.failed_actions_tracker = FailedActionsTracker(max_consecutive_fails=2)
-        self.retry_wait_time = 1.0
         print(f"Agent initialized with Groq model: {model}")
     
     def start_browser(self):
+        """Initialize Chrome browser with Selenium"""
         options = webdriver.ChromeOptions()
         options.add_argument('--start-maximized')
         options.add_argument('--disable-notifications')
@@ -62,17 +63,20 @@ class LocalOllamaAgent:
         print("Browser started\n")
     
     def stop_browser(self):
+        """Close browser"""
         if self.driver:
             self.driver.quit()
             print("\nBrowser closed")
     
     def get_current_url(self):
+        """Get current page URL"""
         try:
             return self.driver.current_url
         except:
             return "unknown"
     
     def get_page_text(self):
+        """Extract all text from page body"""
         try:
             return self.driver.find_element(By.TAG_NAME, "body").text
         except:
@@ -123,7 +127,7 @@ class LocalOllamaAgent:
             return {"error": str(e), "url": self.get_current_url()}
     
     async def call_groq(self, prompt):
-        """Call Groq API with better error handling"""
+        """Call Groq API with error handling"""
         try:
             message = await self.groq_client.chat.completions.create(
                 model=self.model,
@@ -140,14 +144,14 @@ class LocalOllamaAgent:
             return message.choices[0].message.content.strip()
         except Exception as e:
             print(f"Groq error: {e}")
-            return "wait: 2"  # Fallback: wait and retry
+            return "wait: 2"
     
     def click_element(self, text: str) -> tuple[bool, str]:
-        """Click element with detailed feedback"""
+        """Click button or link with detailed feedback"""
         try:
             search_text = text.lower().strip()
             
-            # Try exact match first
+            # Try exact match first on buttons
             buttons = self.driver.find_elements(By.TAG_NAME, "button")
             for btn in buttons:
                 btn_text = btn.text.strip().lower()
@@ -156,7 +160,7 @@ class LocalOllamaAgent:
                     time.sleep(1)
                     return True, f"Clicked button: {text}"
             
-            # Try partial match
+            # Try partial match on buttons
             for btn in buttons:
                 btn_text = btn.text.strip().lower()
                 if search_text in btn_text or btn_text in search_text:
@@ -165,7 +169,7 @@ class LocalOllamaAgent:
                         time.sleep(1)
                         return True, f"Clicked button (partial): {text}"
             
-            # Try links
+            # Try exact match on links
             links = self.driver.find_elements(By.TAG_NAME, "a")
             for link in links:
                 link_text = link.text.strip().lower()
@@ -174,6 +178,7 @@ class LocalOllamaAgent:
                     time.sleep(1)
                     return True, f"Clicked link: {text}"
             
+            # Try partial match on links
             for link in links:
                 link_text = link.text.strip().lower()
                 if search_text in link_text or link_text in search_text:
@@ -187,7 +192,7 @@ class LocalOllamaAgent:
             return False, f"Click failed: {str(e)}"
     
     def type_text(self, field_name: str, text: str) -> tuple[bool, str]:
-        """Type text with detailed feedback"""
+        """Type text into input field with detailed feedback"""
         try:
             search_field = field_name.lower().strip()
             
@@ -220,7 +225,7 @@ class LocalOllamaAgent:
             return False, f"Type failed: {str(e)}"
     
     def select_dropdown(self, field_name: str, value: str) -> tuple[bool, str]:
-        """Select dropdown with detailed feedback"""
+        """Select dropdown option with detailed feedback"""
         try:
             search_field = field_name.lower().strip()
             search_value = value.lower().strip()
@@ -276,10 +281,8 @@ class LocalOllamaAgent:
         if len(self.action_history) < 3:
             return False
         
-        # Check if last 3 actions all FAILED with same action type
         recent = self.action_history[-3:]
         if all(not r.success for r in recent):
-            # All failed, check if they're the same action type
             action_types = [r.action.split(":")[0].lower() for r in recent]
             if action_types[0] == action_types[1] == action_types[2]:
                 return True
@@ -287,6 +290,7 @@ class LocalOllamaAgent:
         return False
     
     async def run_task(self, task_description: str):
+        """Execute task with Groq-powered decision making"""
         print(f"\n{'='*75}")
         print(f"Task: {task_description}")
         print(f"Model: {self.model}")
@@ -334,7 +338,6 @@ CRITICAL:
         for step in range(25):
             step_count += 1
             
-            # Check for loop
             if self.is_stuck_in_loop():
                 print(f"\nStep {step_count}: LOOP DETECTED - Last 3 actions all failed")
                 print("Action History:")
@@ -351,7 +354,6 @@ CRITICAL:
             
             self.visited_pages.add(page_info['url'])
             
-            # Build recent action feedback
             recent_actions_feedback = ""
             if self.action_history:
                 recent_actions_feedback = "\nRecent actions:\n"
@@ -388,7 +390,6 @@ What is your NEXT action? Respond with ONE action only."""
             
             action_lower = action.lower().strip()
             
-            # Check for task completion
             if "task_complete" in action_lower:
                 print(f"✓ TASK COMPLETED\n   {action}\n")
                 self.record_action("TASK_COMPLETE", True, action)
@@ -402,7 +403,6 @@ What is your NEXT action? Respond with ONE action only."""
             success = False
             reason = ""
             
-            # Parse and execute action
             if "click:" in action_lower:
                 button_text = action.split("click:")[-1].strip().split("\n")[0].strip()
                 success, reason = self.click_element(button_text)
@@ -447,7 +447,7 @@ What is your NEXT action? Respond with ONE action only."""
             elif "wait:" in action_lower:
                 try:
                     seconds = int(action.split("wait:")[-1].split()[0])
-                    seconds = min(seconds, 5)  # Cap at 5 seconds
+                    seconds = min(seconds, 5)
                     print(f"   → Waiting {seconds}s...")
                     time.sleep(seconds)
                     success, reason = True, f"Waited {seconds}s"
@@ -459,7 +459,6 @@ What is your NEXT action? Respond with ONE action only."""
                 reason = "Unknown action format"
                 self.record_action("unknown", False, reason)
             
-            # Track consecutive failures
             if not success:
                 consecutive_failures += 1
                 if consecutive_failures >= 5:
@@ -475,18 +474,17 @@ What is your NEXT action? Respond with ONE action only."""
 
 
 async def main():
-    
     print("\n" + "="*75)
-    print("IT ADMIN AGENT - GROQ VERSION")
+    print("IT ADMIN AGENT - GROQ POWERED")
     print("="*75)
-    print("LLM: Groq (groq )")
-    print("Browser: Selenium")
+    print("LLM: Groq (Mixtral-8x7b)")
+    print("Browser: Selenium WebDriver")
     print("Features: Action tracking, loop detection, detailed feedback")
     print("="*75 + "\n")
     
     print("Task 1: CREATE NEW USER")
     print("-"*75)
-    agent1 = LocalOllamaAgent(model="openai/gpt-oss-120b")
+    agent1 = ITAdminAgent(model="mixtral-8x7b-32768")
     await agent1.run_task(
         "Login with admin/admin123. "
         "Navigate to Create User page. "
@@ -498,7 +496,7 @@ async def main():
     
     print("\nTask 2: RESET PASSWORD FOR USER")
     print("-"*75)
-    agent2 = LocalOllamaAgent(model="openai/gpt-oss-120b")
+    agent2 = ITAdminAgent(model="mixtral-8x7b-32768")
     await agent2.run_task(
         "Login with admin/admin123. "
         "Navigate to Users page. "
@@ -511,7 +509,7 @@ async def main():
     
     print("\nTask 3: ASSIGN LICENSE TO USER")
     print("-"*75)
-    agent3 = LocalOllamaAgent(model="openai/gpt-oss-120b")
+    agent3 = ITAdminAgent(model="mixtral-8x7b-32768")
     await agent3.run_task(
         "Login with admin/admin123. "
         "Go to Licenses page. "
@@ -522,7 +520,5 @@ async def main():
     )
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
 if __name__ == "__main__":
     asyncio.run(main())
