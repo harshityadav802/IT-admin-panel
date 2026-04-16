@@ -1,0 +1,5 @@
+flask
+selenium
+groq
+webdriver-manager
+python-dotenv
