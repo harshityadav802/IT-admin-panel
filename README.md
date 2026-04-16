@@ -21,7 +21,7 @@ An intelligent AI agent that automates IT admin tasks on a mock admin panel usin
 ### Prerequisites
 - Python 3.8+
 - Chrome browser
-- Ollama installed (https://ollama.ai)
+- Used Groq Cloud for the LLM support
 - ChromeDriver (auto-installed via webdriver-manager)
 
 ### Installation
