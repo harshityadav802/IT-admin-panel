@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Users - IT Admin Panel{% endblock %}
+
+{% block content %}
+<h1>👥 Users Management</h1>
+
+<h2>Create New User</h2>
+<div class="form-group">
+    <input type="email" id="email" placeholder="email@company.com">
+    <input type="text" id="name" placeholder="Full Name">
+    <button onclick="createUser()">➕ Create User</button>
+</div>
+
+<h2>All Users</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Email</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Password</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in users %}
+        <tr>
+            <td>{{ user.email }}</td>
+            <td>{{ user.name }}</td>
+            <td><span class="status {% if user.enabled %}enabled{% else %}disabled{% endif %}">{% if user.enabled %}✓ Enabled{% else %}✗ Disabled{% endif %}</span></td>
+            <td><code>{{ user.password }}</code></td>
+            <td>
+                <button onclick="resetPassword({{ user.id }})">🔄 Reset Password</button>
+                <button onclick="toggleUser({{ user.id }})">🔁 Toggle</button>
+                <button class="danger" onclick="deleteUser({{ user.id }})">🗑️ Delete</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+function createUser() {
+    const email = document.getElementById('email').value;
+    const name = document.getElementById('name').value;
+    if (!email) { alert('Email required'); return; }
+    fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name })
+    }).then(r => r.json()).then(d => { alert('User created'); location.reload(); });
+}
+function resetPassword(userId) {
+    fetch(`/api/users/${userId}/reset-password`, { method: 'POST' })
+        .then(r => r.json()).then(d => { alert(d.message); location.reload(); });
+}
+function toggleUser(userId) {
+    fetch(`/api/users/${userId}/toggle`, { method: 'POST' })
+        .then(r => r.json()).then(d => { location.reload(); });
+}
+function deleteUser(userId) {
+    if (confirm('Delete this user?')) {
+        fetch(`/api/users/${userId}`, { method: 'DELETE' })
+            .then(r => r.json()).then(d => { location.reload(); });
+    }
+}
+</script>
+{% endblock %}
